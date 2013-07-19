@@ -8,6 +8,7 @@
 #include "pebble_os.h"
 #include "pebble_app.h"
 #include "pebble_fonts.h"
+#include <math.h>
 
 //#define DEBUG
 
@@ -21,11 +22,12 @@ TextLayer lowerLayer, timeLayer, amPmLayer, dayLayer, dateLayer, monthLayer;
 InverterLayer topShade, bottomShade;
 PropertyAnimation topAnimation, bottomAnimation;
 
+PblTm current_time;
 int horizonOffset = 0;
 int horizonOffsetMin = 0;
 int horizonOffsetMax = 88;
 int horizonOffsetTotal = 88;
-double horizonOffsetPerHour = 88 / 24; 
+double horizonOffsetPerHour = 88 / 23.0; 
 int animationTop = 1;
 int animationBot = 0;
 
@@ -138,11 +140,8 @@ void handle_second_tick(AppContextRef ctx, PebbleTickEvent *t)
 	if(enableTick == false) return;
 	
 	//Get the time
-	PblTm time;
-	get_time(&time);
-	int seconds =	time.tm_sec;
-	
-	if(t->tick_time->tm_min == 0) horizonOffset = horizonOffsetTotal - (int) (t->tick_time->tm_hour * horizonOffsetPerHour);  
+	get_time(&current_time);
+	int seconds =	current_time.tm_sec;
 	
 	if(seconds == 59)
 	{
@@ -163,12 +162,17 @@ void handle_second_tick(AppContextRef ctx, PebbleTickEvent *t)
 		animateLayer(&topAnimation, &topShade.layer, GRect(0,0,144,45 + horizonOffset), GRect(0,0,144,0), 400, &animationTop);
 		animateLayer(&bottomAnimation, &bottomShade.layer, GRect(0,45 + horizonOffset,144,123 - horizonOffset), GRect(0,168,144,0), 400, &animationBot);
 	}
+	
+	if(t->tick_time->tm_min == 0) horizonOffset = round(horizonOffsetTotal - (t->tick_time->tm_hour * horizonOffsetPerHour));  
 }
 
 #ifdef DEBUG
 	void handle_up_single_click(ClickRecognizerRef recognizer, Window *window) 
 	{	
-		horizonOffset = horizonOffset - 1;		
+		current_time.tm_hour++;
+		if(current_time.tm_hour >= 24) current_time.tm_hour = 0;
+		horizonOffset = round((double) horizonOffsetTotal - (current_time.tm_hour * horizonOffsetPerHour));
+		setTime(&current_time);
 		realign_horizon();
 	}
 	
@@ -177,17 +181,19 @@ void handle_second_tick(AppContextRef ctx, PebbleTickEvent *t)
 		enableTick = !enableTick;
 		if(enableTick)
 		{
-			PblTm time;
-			get_time(&time);
-			setTime(&time);
+			get_time(&current_time);
+			setTime(&current_time);
 			vibes_short_pulse();
 		}
 		else vibes_double_pulse();
 	}
 	
 	void handle_down_single_click(ClickRecognizerRef recognizer, Window *window) 
-	{			
-		horizonOffset = horizonOffset + 1;
+	{	
+		current_time.tm_hour--;
+		if(current_time.tm_hour < 0) current_time.tm_hour = 23;
+		horizonOffset = round((double) horizonOffsetTotal - (current_time.tm_hour * horizonOffsetPerHour));  
+		setTime(&current_time);
 		realign_horizon();
 	}
 
@@ -211,7 +217,7 @@ void handle_init(AppContextRef ctx)
 	(void)ctx;
 
 	//Init window
-	window_init(&window, "Window Name");
+	window_init(&window, "Main");
 	
 	#ifdef DEBUG
 		window_set_fullscreen(&window, true);
@@ -272,11 +278,10 @@ void handle_init(AppContextRef ctx)
 	layer_add_child(&window.layer, &bottomShade.layer);
 	
 	//Set initial time so display isn't blank
-	PblTm time;
-	get_time(&time);
-	setTime(&time); 
+	get_time(&current_time);
+	setTime(&current_time); 
 	
-	horizonOffset = horizonOffsetTotal - (int) (time.tm_hour * horizonOffsetPerHour);  
+	horizonOffset = round(horizonOffsetTotal - (current_time.tm_hour * horizonOffsetPerHour));
 	realign_horizon();
 }
 
