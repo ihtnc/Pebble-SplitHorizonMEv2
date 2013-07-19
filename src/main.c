@@ -1,9 +1,9 @@
 /**
-	* Split Horizon: Minutes Edition Pebble Watchface
-	* Author: Chris Lewis
-	* Date: 3rd June 2013
-	* Tweaked by: ihopethisnamecounts
-	*/
+* Split Horizon: Minutes Edition Pebble Watchface
+* Author: Chris Lewis
+* Date: 3rd June 2013
+* Tweaked by: ihopethisnamecounts
+*/
 	
 #include "pebble_os.h"
 #include "pebble_app.h"
@@ -15,7 +15,7 @@
 #define MY_UUID { 0x05, 0x68, 0x40, 0xEE, 0x3B, 0x4B, 0x4C, 0x6E, 0x82, 0x24, 0xF2, 0x5E, 0x6E, 0xBE, 0x32, 0xEA }
 
 //Prototypes
-void animateLayer(PropertyAnimation *animation, Layer *input, GRect startLocation, GRect finishLocation, int duration, int *context);
+void animateLayer(PropertyAnimation *animation, Layer *input, GRect startLocation, GRect finishLocation, int duration);
 
 Window window;
 TextLayer lowerLayer, timeLayer, amPmLayer, dayLayer, dateLayer, monthLayer;
@@ -28,8 +28,6 @@ int horizonOffsetMin = 0;
 int horizonOffsetMax = 88;
 int horizonOffsetTotal = 88;
 double horizonOffsetPerHour = 88 / 23.0; 
-int animationTop = 1;
-int animationBot = 0;
 
 #ifndef DEBUG
 	int enableTick = true;
@@ -38,24 +36,24 @@ int animationBot = 0;
 #endif
 	
 PBL_APP_INFO(MY_UUID, 
-			 #ifndef DEBUG
-               "Split Horizon ME v2", 
+             #ifndef DEBUG
+                 "Split Horizon ME v2", 
              #else
-               "Debug: Split Horizon ME v2", 
+                 "Debug: Split Horizon ME v2", 
              #endif
-			 "ihopethisnamecounts", 
-			 1, 0, 
-			 RESOURCE_ID_IMAGE_MENU_ICON, 
-			 #ifndef DEBUG
-               APP_INFO_WATCH_FACE
+             "ihopethisnamecounts", 
+             1, 0, 
+             RESOURCE_ID_IMAGE_MENU_ICON, 
+             #ifndef DEBUG
+                 APP_INFO_WATCH_FACE
              #else
-               APP_INFO_STANDARD_APP
+                 APP_INFO_STANDARD_APP
              #endif
-			);
+            );
 
 /**
-	* Function to set the time and date features on the TextLayers
-	*/
+* Function to set the time and date features on the TextLayers
+*/
 void setTime(PblTm *t) 
 {
 	int day = t->tm_mday;
@@ -131,8 +129,8 @@ void realign_horizon()
 }
 
 /**
-	* Handle function called every second
-	*/
+* Handle function called every second
+*/
 void handle_second_tick(AppContextRef ctx, PebbleTickEvent *t)
 {
 	(void)ctx;
@@ -146,12 +144,18 @@ void handle_second_tick(AppContextRef ctx, PebbleTickEvent *t)
 	if(seconds == 59)
 	{
 		//Animate shades in
-		animateLayer(&topAnimation, &topShade.layer, GRect(0,0,144,0), GRect(0,0,144,45 + horizonOffset), 400, &animationTop);
-		animateLayer(&bottomAnimation, &bottomShade.layer, GRect(0,168,144,0), GRect(0,45 + horizonOffset,144,123 - horizonOffset), 400, &animationBot);
+		animateLayer(&topAnimation, &topShade.layer, GRect(0,0,144,0), GRect(0,0,144,45 + horizonOffset), 400);
+		animateLayer(&bottomAnimation, &bottomShade.layer, GRect(0,168,144,0), GRect(0,45 + horizonOffset,144,123 - horizonOffset), 400);
 	}
 	
 	if(seconds == 0) 
 	{	
+		if(t->tick_time->tm_min == 0)
+		{
+			horizonOffset = round(horizonOffsetTotal - (t->tick_time->tm_hour * horizonOffsetPerHour)); 
+			realign_horizon();
+		}
+		
 		//Change time
 		setTime(t->tick_time);
 	}
@@ -159,11 +163,9 @@ void handle_second_tick(AppContextRef ctx, PebbleTickEvent *t)
 	if(seconds == 1) 
 	{	
 		//Animate shades out
-		animateLayer(&topAnimation, &topShade.layer, GRect(0,0,144,45 + horizonOffset), GRect(0,0,144,0), 400, &animationTop);
-		animateLayer(&bottomAnimation, &bottomShade.layer, GRect(0,45 + horizonOffset,144,123 - horizonOffset), GRect(0,168,144,0), 400, &animationBot);
+		animateLayer(&topAnimation, &topShade.layer, GRect(0,0,144,45 + horizonOffset), GRect(0,0,144,0), 400);
+		animateLayer(&bottomAnimation, &bottomShade.layer, GRect(0,45 + horizonOffset,144,123 - horizonOffset), GRect(0,168,144,0), 400);
 	}
-	
-	if(t->tick_time->tm_min == 0) horizonOffset = round(horizonOffsetTotal - (t->tick_time->tm_hour * horizonOffsetPerHour));  
 }
 
 #ifdef DEBUG
@@ -210,8 +212,8 @@ void handle_second_tick(AppContextRef ctx, PebbleTickEvent *t)
 #endif
 
 /**
-	* Resource initialisation handle function
-	*/
+* Resource initialisation handle function
+*/
 void handle_init(AppContextRef ctx)
 {
 	(void)ctx;
@@ -286,8 +288,8 @@ void handle_init(AppContextRef ctx)
 }
 
 /**
-	* Main Pebble loop
-	*/
+* Main Pebble loop
+*/
 void pbl_main(void *params) 
 {
 	PebbleAppHandlers handlers = 
@@ -303,28 +305,14 @@ void pbl_main(void *params)
 	app_event_loop(params, &handlers);
 }
 
-void handle_animation_stopped(Animation *animation, void *data)
-{
-	(void)animation;
-	
-	if((const int) &data == animationTop) realign_horizon();
-}
-
-
 //Other functions
 /**
-	* Function to linearly animate any layer between two GRects
-	*/
-void animateLayer(PropertyAnimation *animation, Layer *input, GRect startLocation, GRect finishLocation, int duration, int *context)
+* Function to linearly animate any layer between two GRects
+*/
+void animateLayer(PropertyAnimation *animation, Layer *input, GRect startLocation, GRect finishLocation, int duration)
 {
 	property_animation_init_layer_frame(animation, input, &startLocation, &finishLocation);
 	animation_set_duration(&animation->animation, duration);
 	animation_set_curve(&animation->animation, AnimationCurveEaseInOut);
-	animation_set_handlers(&animation->animation, 
-						   (AnimationHandlers)
-						   {
-							   .stopped = (AnimationStoppedHandler)handle_animation_stopped
-						   },
-						   context);
 	animation_schedule(&animation->animation);
 }
