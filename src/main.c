@@ -9,7 +9,21 @@
 #include "pebble_app.h"
 #include "pebble_fonts.h"
 #include <math.h>
+#include "monitor.h"
 
+/* 
+Because of the way that httpebble works, a different UUID is needed for Android and iOS compatibility. 
+If you are building this to use with Android, then leave the #define ANDROID line alone, and if 
+you're building for iOS then remove or comment out that line.
+*/
+
+//#define ANDROID
+#ifdef ANDROID
+	#define MY_UUID { 0x91, 0x41, 0xB6, 0x28, 0xBC, 0x89, 0x49, 0x8E, 0xB1, 0x47, 0x10, 0x34, 0xBF, 0xBE, 0x12, 0x98 }
+#else
+	#define MY_UUID HTTP_UUID
+#endif
+	
 //#define DEBUG
 
 #define container_of(ptr, type, member) \
@@ -45,7 +59,6 @@ static int splashStatus;
 	int enableTick = false;
 #endif
 
-#define MY_UUID { 0x05, 0x68, 0x40, 0xEE, 0x3B, 0x4B, 0x4C, 0x6E, 0x82, 0x24, 0xF2, 0x5E, 0x6E, 0xBE, 0x32, 0xEA }
 PBL_APP_INFO(MY_UUID, 
              #ifndef DEBUG
                  "Split Horizon ME v2", 
@@ -53,7 +66,7 @@ PBL_APP_INFO(MY_UUID,
                  "Debug: Split Horizon ME v2", 
              #endif
              "ihopethisnamecounts", 
-             1, 1, 
+             1, 2, 
              RESOURCE_ID_IMAGE_MENU_ICON, 
              #ifndef DEBUG
                  APP_INFO_WATCH_FACE
@@ -170,6 +183,7 @@ void handle_second_tick(AppContextRef ctx, PebbleTickEvent *t)
 
 		//Change time
 		setTime(t->tick_time);
+		ping();
 	}
 
 	if(seconds == 1) 
@@ -363,6 +377,8 @@ void handle_init(AppContextRef ctx)
 	
 	splashStatus = splash_start;
 	app_timer_send_event(ctx, 2000, 0);
+	
+	monitor_init(ctx);
 }
 
 /**
@@ -378,6 +394,15 @@ void pbl_main(void *params)
 		{
 			.tick_handler = &handle_second_tick,
 			.tick_units = SECOND_UNIT
+		},
+			
+		.messaging_info = 
+		{
+			.buffer_sizes = 
+			{
+				.inbound = 124,
+				.outbound = 256
+			}
 		},
 			
 		.timer_handler = &handle_timer
