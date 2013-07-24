@@ -3,9 +3,10 @@
 #include "monitor.h"
 
 static bool is_connected;
-static uint8_t retry_freq_count = 13;
-static uint8_t retry_freq[] = {1, 1, 1, 1, 5, 5, 5, 5, 5, 30, 30, 30, 60};
-static uint8_t retry_index = 0;
+static bool needs_vibe;
+static uint8_t vibe_freq_count = 13;
+static uint8_t vibe_freq[] = {1, 1, 1, 1, 5, 5, 5, 5, 5, 30, 30, 30, 60};
+static uint8_t vibe_index = 0;
 static int initial_disconnect;
 const VibePattern vibes_disconnect_pattern = 
 {
@@ -34,19 +35,19 @@ void handle_result(int error_code)
 				static PblTm time;
 				get_time(&time);
 				
-				retry_index = 0;
+				vibe_index = 0;
 				is_connected = false;
 				initial_disconnect = time.tm_min;
 			}
 		
-			vibes_enqueue_custom_pattern(vibes_disconnect_pattern);
+			if(needs_vibe == true) vibes_enqueue_custom_pattern(vibes_disconnect_pattern);
 			break;
 		}
 		case HTTP_OK:
 		{
 			if(is_connected == false) //connection was restored
 			{
-				retry_index = 0;
+				vibe_index = 0;
 				is_connected = true;
 				vibes_enqueue_custom_pattern(vibes_connect_pattern);
 			}
@@ -74,16 +75,17 @@ void reconnect(void* context)
 void ping()
 {
 	#ifdef PHONE_HAS_HTTPPEBBLE
+		needs_vibe = true;
+	
 		if(is_connected == false)
 		{
 			static PblTm time;
 			get_time(&time);
 			
-			//if still connected, the retry frequency gets reduced over time, until it no longer retries 
-			if(retry_index > retry_freq_count) return;
-			if(time.tm_min % retry_freq[retry_index] != initial_disconnect % retry_freq[retry_index]) return;
-			
-			retry_index++;
+			//if still disconnected, the vibrate frequency gets reduced over time, until it no longer vibrates 
+			if(vibe_index > vibe_freq_count) needs_vibe = false;
+			else if(time.tm_min % vibe_freq[vibe_index] != initial_disconnect % vibe_freq[vibe_index]) needs_vibe = false;
+			else vibe_index++;
 		}
 		
 		http_time_request();
@@ -94,7 +96,7 @@ void monitor_init(AppContextRef ctx)
 {
 	http_set_app_id(APP_ID);
 	
-	retry_index = 0;
+	vibe_index = 0;
 	is_connected = true;
 	
 	http_register_callbacks((HTTPCallbacks)
