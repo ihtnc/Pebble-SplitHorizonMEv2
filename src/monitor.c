@@ -20,9 +20,9 @@ const VibePattern vibes_connect_pattern =
 	.num_segments = 4
 };
 
-void handle_result(int error_code)
+void handle_result(int result)
 {
-	switch (error_code) 
+	switch (result) 
 	{
 		case HTTP_SEND_TIMEOUT:
 		case HTTP_NOT_CONNECTED:
