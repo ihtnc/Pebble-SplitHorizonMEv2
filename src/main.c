@@ -25,7 +25,11 @@ you're building for iOS then remove or comment out that line.
 #endif
 	
 //#define DEBUG
-
+	
+//this flag changes the behavior of the horizon into 12 hours to rise and 12 hours to fall
+//instead of 24 hours to rise
+//#define RISEFALL 
+	
 #define container_of(ptr, type, member) \
 	({ \
 		char *__mptr = (char *)(uintptr_t) (ptr); \
@@ -45,7 +49,9 @@ int horizonOffset = 0;
 int horizonOffsetMin = 0;
 int horizonOffsetMax = 88;
 int horizonOffsetTotal = 88;
-double horizonOffsetPerHour = 88 / 23.0; 
+
+//minus 1 since that 1 is the first position already
+double horizonOffsetPerHour = 88 / 23.0;  //23 = 24 - 1
 
 const int splash_none = 0;
 const int splash_start = 1;
@@ -66,7 +72,7 @@ PBL_APP_INFO(MY_UUID,
                  "Debug: Split Horizon ME v2", 
              #endif
              "ihopethisnamecounts", 
-             1, 2, 
+             1, 3, 
              RESOURCE_ID_IMAGE_MENU_ICON, 
              #ifndef DEBUG
                  APP_INFO_WATCH_FACE
@@ -152,6 +158,27 @@ void realign_horizon()
 	if(splashStatus == splash_none) layer_mark_dirty(&window.layer);
 }
 
+int get_offset(PblTm *time)
+{
+	int offset;
+	#ifndef RISEFALL
+		offset = round(horizonOffsetTotal - (time->tm_hour * horizonOffsetPerHour));
+	#else
+		int hr = time->tm_hour % 12;
+		int current = ((hr * 60) + time->tm_min) / 30;
+		if(time->tm_hour < 12)
+		{
+			offset = round(horizonOffsetTotal - (current * horizonOffsetPerHour));
+		}
+		else
+		{
+			offset = round(current * horizonOffsetPerHour);
+		}
+	#endif
+		
+	return offset;
+}
+
 /**
 * Handle function called every second
 */
@@ -161,7 +188,6 @@ void handle_second_tick(AppContextRef ctx, PebbleTickEvent *t)
 
 	if(enableTick == false || splashStatus != splash_none) return;
 	
-
 	//Get the time
 	get_time(&current_time);
 	int seconds =	current_time.tm_sec;
@@ -175,12 +201,20 @@ void handle_second_tick(AppContextRef ctx, PebbleTickEvent *t)
 
 	if(seconds == 0) 
 	{	
-		if(t->tick_time->tm_min == 0)
-		{
-			horizonOffset = round(horizonOffsetTotal - (t->tick_time->tm_hour * horizonOffsetPerHour)); 
-			realign_horizon();
-		}
-
+		#ifndef RISEFALL
+			if(t->tick_time->tm_min == 0)
+			{	
+				horizonOffset = get_offset(t->tick_time);
+				realign_horizon();
+			}
+		#else
+			if(t->tick_time->tm_min % 30 == 0)
+			{	 
+				horizonOffset = get_offset(t->tick_time);
+				realign_horizon();
+			}
+		#endif
+			
 		//Change time
 		setTime(t->tick_time);
 		ping();
@@ -229,9 +263,20 @@ void showSplash()
 #ifdef DEBUG
 	void handle_up_single_click(ClickRecognizerRef recognizer, Window *window) 
 	{	
-		current_time.tm_hour++;
-		if(current_time.tm_hour >= 24) current_time.tm_hour = 0;
-		horizonOffset = round(horizonOffsetTotal - (current_time.tm_hour * horizonOffsetPerHour));
+		#ifndef RISEFALL
+			current_time.tm_hour++;
+			if(current_time.tm_hour >= 24) current_time.tm_hour = 0;
+		#else
+			current_time.tm_min = current_time.tm_min + 30;
+			if(current_time.tm_min > 60) 
+			{
+				current_time.tm_min = current_time.tm_min % 60;
+				current_time.tm_hour++;
+			}
+			if(current_time.tm_hour >= 24) current_time.tm_hour = 0;
+		#endif
+		
+		horizonOffset = get_offset(&current_time);
 		setTime(&current_time);
 		realign_horizon();
 	}
@@ -240,18 +285,27 @@ void showSplash()
 	{
 		enableTick = !enableTick;
 		get_time(&current_time);
-		horizonOffset = round(horizonOffsetTotal - (current_time.tm_hour * horizonOffsetPerHour));
+		horizonOffset = get_offset(&current_time);
 		setTime(&current_time);
-		
-		if(enableTick) vibes_long_pulse();
-		else vibes_double_pulse();
+		ping();
 	}
 
 	void handle_down_single_click(ClickRecognizerRef recognizer, Window *window) 
 	{	
-		current_time.tm_hour--;
-		if(current_time.tm_hour < 0) current_time.tm_hour = 23;
-		horizonOffset = round(horizonOffsetTotal - (current_time.tm_hour * horizonOffsetPerHour));
+		#ifndef RISEFALL
+			current_time.tm_hour--;
+			if(current_time.tm_hour < 0) current_time.tm_hour = 23;
+		#else
+			current_time.tm_min = current_time.tm_min - 30;
+			if(current_time.tm_min < 0) 
+			{
+				current_time.tm_min = 60 - ((current_time.tm_min * -1) % 60);
+				current_time.tm_hour--;
+			}
+			if(current_time.tm_hour < 0) current_time.tm_hour = 23;
+		#endif
+		
+		horizonOffset = get_offset(&current_time);
 		setTime(&current_time);
 		realign_horizon();
 	}
@@ -372,7 +426,7 @@ void handle_init(AppContextRef ctx)
 
 	//Set initial display
 	get_time(&current_time); 
-	horizonOffset = round(horizonOffsetTotal - (current_time.tm_hour * horizonOffsetPerHour));
+	horizonOffset = get_offset(&current_time);
 	showSplash();
 	
 	splashStatus = splash_start;
