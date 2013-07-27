@@ -1,6 +1,7 @@
 #include "pebble_os.h"
 #include "pebble_app.h"
 #include "monitor.h"
+#include "app_options.h"
 
 static bool is_connected;
 static bool needs_vibe;

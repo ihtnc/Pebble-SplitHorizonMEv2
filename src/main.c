@@ -10,6 +10,8 @@
 #include "pebble_fonts.h"
 #include <math.h>
 #include "monitor.h"
+#include "app_info.h"
+#include "app_options.h"
 
 /* 
 Because of the way that httpebble works, a different UUID is needed for Android and iOS compatibility. 
@@ -17,25 +19,28 @@ If you are building this to use with Android, then leave the #define ANDROID lin
 you're building for iOS then remove or comment out that line.
 */
 
-//#define ANDROID
 #ifdef ANDROID
 	#define MY_UUID { 0x91, 0x41, 0xB6, 0x28, 0xBC, 0x89, 0x49, 0x8E, 0xB1, 0x47, 0x10, 0x34, 0xBF, 0xBE, 0x12, 0x98 }
 #else
 	#define MY_UUID HTTP_UUID
 #endif
 	
-//#define DEBUG
-	
-//this flag changes the behavior of the horizon into 12 hours to rise and 12 hours to fall
-//instead of 24 hours to rise
-//#define RISEFALL 
-	
 #define container_of(ptr, type, member) \
 	({ \
 		char *__mptr = (char *)(uintptr_t) (ptr); \
 		(type *)(__mptr - offsetof(type,member) ); \
 	 })
-	
+
+PBL_APP_INFO(MY_UUID, APP_NAME, APP_AUTHOR,
+             APP_VER_MAJOR, APP_VER_MINOR, /* App version */
+             RESOURCE_ID_IMAGE_MENU_ICON,
+			 #ifndef DEBUG
+               APP_INFO_WATCH_FACE
+             #else
+               APP_INFO_STANDARD_APP
+             #endif             
+			);
+
 //Prototypes
 void animateLayer(PropertyAnimation *animation, Layer *input, GRect startLocation, GRect finishLocation, int duration);
 
@@ -64,22 +69,6 @@ static int splashStatus;
 #else
 	int enableTick = false;
 #endif
-
-PBL_APP_INFO(MY_UUID, 
-             #ifndef DEBUG
-                 "Split Horizon ME v2", 
-             #else
-                 "Debug: Split Horizon ME v2", 
-             #endif
-             "ihopethisnamecounts", 
-             1, 3, 
-             RESOURCE_ID_IMAGE_MENU_ICON, 
-             #ifndef DEBUG
-                 APP_INFO_WATCH_FACE
-             #else
-                 APP_INFO_STANDARD_APP
-             #endif
-            );
 
 /**
 * Function to set the time and date features on the TextLayers
