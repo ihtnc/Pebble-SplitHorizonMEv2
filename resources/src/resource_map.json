@@ -1,0 +1,26 @@
+{
+    "media": [
+        {
+            "defName": "IMAGE_MENU_ICON",
+            "type": "png",
+            "file": "images/menu_icon.png"
+        },
+        {
+            "defName": "FONT_IMAGINE_20",
+            "type": "font",
+            "file": "fonts/imagine.ttf"
+        },
+        {
+            "defName": "FONT_IMAGINE_25",
+            "type": "font",
+            "file": "fonts/imagine.ttf"
+        },
+        {
+            "defName": "FONT_IMAGINE_43",
+            "type": "font",
+            "file": "fonts/imagine.ttf"
+        }
+    ],
+    "friendlyVersion": "VERSION",
+    "versionDefName": "APP_RESOURCES"
+}
