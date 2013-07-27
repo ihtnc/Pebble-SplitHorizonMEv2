@@ -76,7 +76,6 @@ static int splashStatus;
 void setTime(PblTm *t) 
 {
 	int day = t->tm_mday;
-	int seconds =	t->tm_sec;
 	int hours = t->tm_hour;
 
 	//Time string

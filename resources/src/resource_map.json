@@ -5,6 +5,11 @@
             "type": "png",
             "file": "images/menu_icon.png"
         },
+		{
+            "defName": "FONT_IMAGINE_14",
+            "type": "font",
+            "file": "fonts/imagine.ttf"
+        },
         {
             "defName": "FONT_IMAGINE_20",
             "type": "font",
